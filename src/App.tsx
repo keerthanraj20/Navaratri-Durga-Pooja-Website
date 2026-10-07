@@ -145,15 +145,47 @@ type Registration = {
 const inputClass =
   "mt-2 w-full rounded-xl border border-[#e8d9c8] bg-[#fffdf8] px-4 py-3 text-sm text-[#401d22] outline-none transition placeholder:text-[#9b8682] focus:border-[#a7282f] focus:ring-2 focus:ring-[#a7282f]/10";
 
+const STORAGE_KEY = "pooja-registrations";
+const adminPassword = ["Keerthan", "@", "7956"].join("");
+
+function readStoredRegistrations(): Registration[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function fetchRegistrations(): Promise<Registration[]> {
+  const response = await fetch("/api/registrations");
+  if (!response.ok) throw new Error("Registrations unavailable");
+  const data = await response.json();
+  return Array.isArray(data.registrations) ? data.registrations : [];
+}
+
 function AdminDashboard({
   registrations,
+  storageMode,
+  isLoading,
+  onRefresh,
   onClear,
   onLogout,
 }: {
   registrations: Registration[];
+  storageMode: "server" | "browser" | "loading";
+  isLoading: boolean;
+  onRefresh: () => void;
   onClear: () => void;
   onLogout: () => void;
 }) {
+  const storageNote =
+    storageMode === "server"
+      ? "Shared server storage · every device sees the same list"
+      : storageMode === "browser"
+        ? "This browser only · server unreachable, entries stay on this device"
+        : "Loading registrations…";
   return (
     <div className="min-h-screen bg-[#f6ead7] text-[#37191d]">
       <header className="border-b border-[#e3ccb0] bg-[#fffaf1]">
@@ -168,6 +200,14 @@ function AdminDashboard({
             </div>
           </div>
           <div className="flex flex-wrap justify-end gap-3">
+            <button
+              className="rounded-full border border-[#d4b99b] px-5 py-2.5 text-sm font-semibold text-[#71514d] transition hover:bg-[#f2e3cf] disabled:opacity-60"
+              disabled={isLoading}
+              onClick={onRefresh}
+              type="button"
+            >
+              {isLoading ? "Refreshing…" : "Refresh"}
+            </button>
             <button
               className="rounded-full border border-[#d4b99b] px-5 py-2.5 text-sm font-semibold text-[#71514d] transition hover:bg-[#f2e3cf]"
               onClick={onLogout}
@@ -199,7 +239,7 @@ function AdminDashboard({
               All registrations
             </h1>
             <p className="mt-3 text-sm text-[#755b57]">
-              Browser-only preview · {registrations.length} total registrations
+              {storageNote} · {registrations.length} total registrations
             </p>
           </div>
           {registrations.length > 0 && (
@@ -208,7 +248,7 @@ function AdminDashboard({
               onClick={onClear}
               type="button"
             >
-              Clear demo records
+              Clear all registrations
             </button>
           )}
         </div>
@@ -276,9 +316,9 @@ function AdminDashboard({
           )}
         </div>
         <p className="mt-5 text-xs leading-5 text-[#8d746e]">
-          This preview stores registrations only in this browser. Connect
-          Supabase before using this dashboard for real registrations across
-          multiple devices.
+          {storageMode === "server"
+            ? "Registrations are saved on the server, so devotees registering from any phone or computer appear here."
+            : "The server could not be reached, so registrations are saved only in this browser on this device."}
         </p>
       </main>
     </div>
@@ -291,7 +331,6 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 
   function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const adminPassword = ["Keerthan", "@", "7956"].join("");
     if (password === adminPassword) {
       setError(false);
       onSuccess();
@@ -365,15 +404,30 @@ export default function App() {
     sessionStorage.getItem("admin-authenticated") === "true",
   );
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [storageMode, setStorageMode] = useState<
+    "server" | "browser" | "loading"
+  >("loading");
+  const [isLoading, setIsLoading] = useState(true);
   const [latestRegistration, setLatestRegistration] =
     useState<Registration | null>(null);
   const [selectedFestivalDay, setSelectedFestivalDay] = useState("");
 
-  useEffect(() => {
-    const saved = localStorage.getItem("pooja-registrations");
-    if (saved) {
-      setRegistrations(JSON.parse(saved));
+  async function loadRegistrations() {
+    setIsLoading(true);
+    try {
+      const serverRegistrations = await fetchRegistrations();
+      setRegistrations(serverRegistrations);
+      setStorageMode("server");
+    } catch {
+      setRegistrations(readStoredRegistrations());
+      setStorageMode("browser");
+    } finally {
+      setIsLoading(false);
     }
+  }
+
+  useEffect(() => {
+    loadRegistrations();
   }, []);
 
   useEffect(() => {
@@ -385,7 +439,7 @@ export default function App() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
@@ -400,10 +454,27 @@ export default function App() {
       sankalpa: String(data.get("sankalpa") || ""),
       createdAt: new Date().toLocaleString(),
     };
-    const updated = [registration, ...registrations];
-    setRegistrations(updated);
-    setLatestRegistration(registration);
-    localStorage.setItem("pooja-registrations", JSON.stringify(updated));
+
+    try {
+      const response = await fetch("/api/registrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(registration),
+      });
+      if (!response.ok) throw new Error("Registration failed");
+      const saved = (await response.json()).registration as Registration;
+      setRegistrations([saved, ...registrations]);
+      setLatestRegistration(saved);
+      setStorageMode("server");
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      const updated = [registration, ...registrations];
+      setRegistrations(updated);
+      setLatestRegistration(registration);
+      setStorageMode("browser");
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    }
+
     setSubmitted(true);
   }
 
@@ -487,9 +558,23 @@ export default function App() {
     URL.revokeObjectURL(link.href);
   }
 
-  function clearRegistrations() {
+  async function clearRegistrations() {
+    let clearedOnServer = false;
+    try {
+      const response = await fetch("/api/registrations", {
+        method: "DELETE",
+        headers: { "x-admin-password": adminPassword },
+      });
+      clearedOnServer = response.ok;
+    } catch {
+      clearedOnServer = false;
+    }
+    if (!clearedOnServer && !window.confirm("The server could not be reached. Clear the registrations saved in this browser instead?")) {
+      return;
+    }
     setRegistrations([]);
-    localStorage.removeItem("pooja-registrations");
+    localStorage.removeItem(STORAGE_KEY);
+    setStorageMode(clearedOnServer ? "server" : "browser");
   }
 
   if (isAdminPage) {
@@ -506,6 +591,9 @@ export default function App() {
     return (
       <AdminDashboard
         onClear={clearRegistrations}
+        onRefresh={loadRegistrations}
+        isLoading={isLoading}
+        storageMode={storageMode}
         onLogout={() => {
           sessionStorage.removeItem("admin-authenticated");
           setIsAdminAuthenticated(false);
