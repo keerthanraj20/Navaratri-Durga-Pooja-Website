@@ -7,6 +7,9 @@ const venueAddress =
   "Sri Datta Sai Enclave, Road Number 4, Gangaram, Chanda Nagar, Hyderabad, Telangana 500050";
 const venueMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venueAddress)}`;
 
+const contactPhoneDisplay = "+91 99594 37717";
+const contactPhoneHref = "tel:+919959437717";
+
 function Icon({
   children,
   className = "h-5 w-5",
@@ -530,7 +533,7 @@ export default function App() {
   <main class="receipt">
     <header class="header">
       <div class="lotus">ॐ</div>
-      <h1>Jai Bhavani Youth Association</h1>
+      <h1>JBY Association Durga Matha Puja</h1>
       <p class="subtitle">Navaratri Durga Pooja</p>
     </header>
     <div class="status">Registration Confirmed</div>
@@ -610,7 +613,7 @@ export default function App() {
           <a href="#" className="flex items-center gap-3 text-white">
             <LotusMark />
             <span className="font-display text-xl font-semibold tracking-wide">
-              Jai Bhavani Youth Association
+              JBY Association Durga Matha Puja
             </span>
           </a>
           <nav className="hidden items-center gap-8 text-sm font-medium text-white/90 md:flex">
@@ -940,6 +943,20 @@ export default function App() {
                   </span>
                   Confirmation by phone or email
                 </p>
+                <p className="flex items-center gap-3">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f4e3c4] text-[#92272e]">
+                    <Icon className="h-4 w-4">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z" />
+                    </Icon>
+                  </span>
+                  For more details call{" "}
+                  <a
+                    className="font-semibold text-[#8c252c] underline-offset-2 hover:underline"
+                    href={contactPhoneHref}
+                  >
+                    {contactPhoneDisplay}
+                  </a>
+                </p>
               </div>
             </div>
 
@@ -952,7 +969,7 @@ export default function App() {
                         <LotusMark />
                       </div>
                       <p className="mt-3 font-display text-2xl font-semibold">
-                        Jai Bhavani Youth Association
+                        JBY Association Durga Matha Puja
                       </p>
                       <p className="mt-1 text-xs font-bold uppercase tracking-[0.2em] text-[#f8dc92]">
                         Navaratri Durga Pooja
@@ -1169,7 +1186,7 @@ export default function App() {
             <LotusMark />
             <div>
               <strong className="font-display text-lg">
-                Jai Bhavani Youth Association
+                JBY Association Durga Matha Puja
               </strong>
               <a
                 className="mt-1 block max-w-md text-xs leading-5 text-[#8a706b] transition hover:text-[#681c24]"
@@ -1178,6 +1195,12 @@ export default function App() {
                 target="_blank"
               >
                 {venueAddress}
+              </a>
+              <a
+                className="mt-1 block text-xs font-semibold text-[#8a706b] transition hover:text-[#681c24]"
+                href={contactPhoneHref}
+              >
+                For more details: {contactPhoneDisplay}
               </a>
             </div>
           </div>
